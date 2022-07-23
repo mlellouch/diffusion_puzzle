@@ -7,12 +7,16 @@ import cv2
 class Piece:
 
     def __init__(self, x, y, theta, img, mask_number:int =1):
+        assert img.shape[2] == 4, "only accept images with alpha, so we know which pixels are part of the piece"
         self.x = x
         self.y = y
         self.theta = theta % 360
-        self.img = img
+        self.img = img[:, :, :3]
         self.mask_number = mask_number
-        self.mask = np.ones((img.shape[0], img.shape[1], 1), dtype=np.uint16) * mask_number
+        self.mask = img[:, :, 3]
+        self.mask[self.mask >= 1] = 1
+        self.mask = self.mask.astype(np.uint16) * mask_number
+
 
     def rotate_image(self, image, theta):
         # Taking image height and width
@@ -88,7 +92,11 @@ class Puzzle:
 class MovingPiece(Piece):
 
     def __init__(self, piece: Piece, target_x, target_y, target_theta, total_steps: int):
-        super().__init__(piece.x, piece.y, piece.theta, piece.img, piece.mask_number)
+        # rebuild the piece alpha channel
+        mask = piece.mask.copy()[:, :, np.newaxis]
+        mask[mask >= 1] = 1
+        img = np.concatenate([piece.img, mask.astype(np.uint8)], axis=2)
+        super().__init__(piece.x, piece.y, piece.theta, img, piece.mask_number)
         self.target_x = target_x
         self.target_y = target_y
         self.target_theta = target_theta % 360

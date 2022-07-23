@@ -2,10 +2,15 @@ from PIL import Image
 import numpy as np
 from typing import Tuple
 import puzzle
+import cv2
 
 
 def image_to_grid_puzzle(image_path:str, grid_size:int, puzzle_size: Tuple[int, int]=None, puzzle_pad: Tuple[int, int]=(0,0)):
     image = np.array(Image.open(image_path))
+    # add alpha channel if needed
+    if image.shape[2] == 3:
+        image = cv2.cvtColor(image, cv2.COLOR_RGB2RGBA)
+
     if puzzle_size is None:
         puzzle_size = image.shape[:2]
     assert puzzle_size[0] >= image.shape[0] and puzzle_size[1] >= image.shape[1], "Can't create a puzzle that is" \
