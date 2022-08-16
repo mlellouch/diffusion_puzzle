@@ -23,3 +23,13 @@ def create_random_moving_puzzle(original_puzzle:puzzle.Puzzle, total_steps:int):
     return new_puzzle
 
 
+def create_random_translating_puzzle(original_puzzle:puzzle.Puzzle, total_steps:int):
+    new_puzzle = puzzle.TranslatePuzzle(original_puzzle.image_size, puzzle_pad=original_puzzle.pad)
+    for piece in original_puzzle.pieces:
+        target_x, target_y, _ = find_target_location_for_piece(piece, original_puzzle.image_size)
+        new_piece = puzzle.TranslatingPiece(piece, target_x, target_y, total_steps)
+        new_puzzle.add_piece(new_piece)
+
+    return new_puzzle
+
+

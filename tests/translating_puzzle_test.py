@@ -7,11 +7,11 @@ import tqdm
 import cv2
 
 
-class MovingPuzzleTest(unittest.TestCase):
+class TranslatingPuzzleTest(unittest.TestCase):
     def test_sanity(self):
         total_steps = 100
         puzzle = grid_puzzle.image_to_grid_puzzle(image_path='../face.jpg', grid_size=16, puzzle_size=(1024, 1024), puzzle_pad=(128, 128))
-        moving = moving_puzzle.create_random_moving_puzzle(puzzle, total_steps=total_steps)
+        moving = moving_puzzle.create_random_translating_puzzle(puzzle, total_steps=total_steps)
 
         # animate the moving puzzle
         for i in tqdm.tqdm(range(total_steps)):
@@ -24,19 +24,12 @@ class MovingPuzzleTest(unittest.TestCase):
 
         cv2.destroyAllWindows()
 
-    def test_vector_field_sanity(self):
-        total_steps = 300
-        puzzle = grid_puzzle.image_to_grid_puzzle(image_path='../face.jpg', grid_size=16, puzzle_size=(1024, 1024),
-                                                  puzzle_pad=(128, 128))
-        moving = moving_puzzle.create_random_moving_puzzle(puzzle, total_steps=total_steps)
-        moving.set_current_step(100)
-        moving.pieces[0].get_vector_field()
 
     def test_vector_field_full(self):
         total_steps = 300
         puzzle = grid_puzzle.image_to_grid_puzzle(image_path='../face.jpg', grid_size=16, puzzle_size=(1024, 1024),
                                                   puzzle_pad=(128, 128))
-        moving = moving_puzzle.create_random_moving_puzzle(puzzle, total_steps=total_steps)
+        moving = moving_puzzle.create_random_translating_puzzle(puzzle, total_steps=total_steps)
 
         # animate the moving puzzle
         for i in tqdm.tqdm(range(total_steps)):
@@ -45,6 +38,7 @@ class MovingPuzzleTest(unittest.TestCase):
             #vector_field = np.concatenate([vector_field, np.zeros([vector_field.shape[0], vector_field.shape[1], 1])], axis=2)
 
             cv2.imshow('frame', np.linalg.norm(vector_field, axis=2))
+            assert(vector_field.max() < 10) # if not, some piece is moving really fast
 
             if cv2.waitKey(1) & 0xFF == ord('q'):
                 break
