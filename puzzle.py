@@ -18,7 +18,7 @@ class Piece:
         self.mask = self.mask.astype(np.uint16) * mask_number
 
 
-    def rotate_image(self, image, theta):
+    def get_rotation_matrix(self, image, theta):
         # Taking image height and width
         imgHeight, imgWidth = image.shape[0], image.shape[1]
         centreY, centreX = imgHeight // 2, imgWidth // 2
@@ -34,6 +34,10 @@ class Piece:
 
         rotationMatrix[0][2] += (newImageWidth / 2) - centreX
         rotationMatrix[1][2] += (newImageHeight / 2) - centreY
+        return rotationMatrix, newImageWidth, newImageHeight
+
+    def rotate_image(self, image, theta):
+        rotationMatrix, newImageWidth, newImageHeight = self.get_rotation_matrix(image, theta)
 
         # Now, we will perform actual image rotation
         rotatingimage = cv2.warpAffine(
@@ -103,6 +107,18 @@ class MovingPiece(Piece):
         self.total_steps = total_steps
         self.current_step = 0
 
+
+        x_space, y_space = np.linspace(0, self.img.shape[0] - 1, self.img.shape[0]), np.linspace(0, self.img.shape[1] - 1, self.img.shape[1])
+        xs, ys = np.meshgrid(x_space, y_space)
+        self.initial_pixel_position = np.stack([ys,xs], axis=2)
+        # remove me
+        # for vector field monitoring
+        self.pixel_location = np.zeros_like(self.mask, dtype=np.uint16)
+        pixels_to_follow = self.mask.sum() // self.mask_number
+        assert pixels_to_follow < (2 ** 16) - 1, "for computation purposes, can't have a piece with 2**16 pixels"
+        self.pixel_location[self.mask != 0] = np.arange(1, pixels_to_follow + 1)
+
+
     def set_step(self, current_step):
         self.current_step = current_step
 
@@ -119,13 +135,165 @@ class MovingPiece(Piece):
         x, y, theta = self.get_step_location()
         return x, y, self.rotate_image(self.img, theta), self.rotate_image(self.mask, theta)
 
+    def draw_piece_with_vector_field(self):
+        x, y, theta = self.get_step_location()
+        vector_field = self.rotate_image(self.initial_pixel_position, theta) + np.array([x,y])
+        return x, y, self.rotate_image(self.img, theta), self.rotate_image(self.mask, theta), vector_field
+
+
+    def get_pixel_position(self):
+        x, y, theta = self.get_step_location()
+
+        # get current mat
+        rotation_matrix, _, _ = self.get_rotation_matrix(self.img, theta)
+
+        # perform the transform on all pixels, and get their new position
+        new_position = np.einsum('lk,ijk->ijl', rotation_matrix, self.initial_pixel_position)
+        new_position += np.array([x,y])
+        return new_position
+
 
 class MovingPuzzle(Puzzle):
     pieces:List[MovingPiece]
 
     def __init__(self, image_size: Tuple[int, int], puzzle_pad: Tuple[int, int]=(0,0)):
         super().__init__(image_size, puzzle_pad)
+        self.last_pixel_locations = []
+
+    def add_piece(self, piece: MovingPiece):
+        super().add_piece(piece)
+        self.last_pixel_locations.append(piece.initial_pixel_position[:, :, :2])
 
     def set_current_step(self, current_step):
         for p in self.pieces:
             p.set_step(current_step)
+
+    def draw_with_vector_field(self):
+        """
+        Returns the way the puzzle looks, and a segmentation mask
+        :param pad_image: Pad the image so that all the puzzles will fit in
+        """
+
+        canvas = np.zeros((self.real_size[0], self.real_size[1], 3), dtype=np.uint8)
+        total_vector_field = np.zeros((self.real_size[0], self.real_size[1], 2), dtype=np.uint8)
+        mask_canvas = np.zeros(self.real_size[:2], dtype=np.uint16)
+        new_pixel_locations = []
+        for p, last_pixel_location in zip(self.pieces, self.last_pixel_locations):
+            x, y, img, mask, vector_field = p.draw_piece_with_vector_field()
+            x, y = x + (self.pad[0] // 2),  y + (self.pad[1] // 2)
+            canvas[x:x + img.shape[0], y:y + img.shape[1]][mask != 0] = img[mask != 0]
+            mask_canvas[x:x + mask.shape[0], y:y + mask.shape[1]][mask != 0] = mask[mask != 0]
+
+            d_vector_field = vector_field - last_pixel_location
+            new_pixel_locations.append(vector_field)
+            total_vector_field[x:x + img.shape[0], y:y + img.shape[1]][mask != 0] = d_vector_field[mask != 0]
+
+        self.last_pixel_locations = new_pixel_locations
+        return canvas, mask_canvas, total_vector_field
+
+
+    def draw_vector_field(self):
+        """
+        Note: calling this function will update self.last_pixel_location
+        hence, if this function is called twice without changing the current step,
+        the second call should return all zeros
+        """
+
+        raise DeprecationWarning('this doesn\'t work')
+        canvas = np.zeros((self.real_size[0], self.real_size[1], 2), dtype=np.uint8)
+        for p, last_pixel_position in zip(self.pieces, self.last_pixel_locations):
+            piece_vector_field = p.get_pixel_position() - last_pixel_position
+            x, y, _, mask = p.draw_piece()
+            x, y = x + (self.pad[0] // 2),  y + (self.pad[1] // 2)
+            canvas[x:x + piece_vector_field.shape[0], y:y + piece_vector_field.shape[1]][mask != 0] = piece_vector_field[mask != 0]
+
+        return canvas
+
+
+### simple case where the pieces don't rotate
+class TranslatingPiece(Piece):
+
+    def __init__(self, piece: Piece, target_x, target_y, total_steps: int):
+        # rebuild the piece alpha channel
+        mask = piece.mask.copy()[:, :, np.newaxis]
+        mask[mask >= 1] = 1
+        img = np.concatenate([piece.img, mask.astype(np.uint8)], axis=2)
+        super().__init__(piece.x, piece.y, theta=0, img=img, mask_number=piece.mask_number)
+        self.target_x = target_x
+        self.target_y = target_y
+        self.total_steps = total_steps
+        self.current_step = 0
+
+        x_space, y_space = np.linspace(0, self.img.shape[0] - 1, self.img.shape[0]), np.linspace(0, self.img.shape[1] - 1, self.img.shape[1])
+        xs, ys = np.meshgrid(x_space, y_space)
+        self.initial_pixel_position = np.stack([ys,xs], axis=2)
+        # remove me
+        # for vector field monitoring
+        self.pixel_location = np.zeros_like(self.mask, dtype=np.uint16)
+        pixels_to_follow = self.mask.sum() // self.mask_number
+        assert pixels_to_follow < (2 ** 16) - 1, "for computation purposes, can't have a piece with 2**16 pixels"
+        self.pixel_location[self.mask != 0] = np.arange(1, pixels_to_follow + 1)
+
+
+    def set_step(self, current_step):
+        self.current_step = current_step
+
+    def _get_step_value(self, start, end):
+        return start + (end - start) * (self.current_step / self.total_steps)
+
+    def get_step_location(self):
+        x = self._get_step_value(self.x, self.target_x)
+        y = self._get_step_value(self.y, self.target_y)
+        return int(x), int(y), 0
+
+    def draw_piece(self):
+        x, y, _ = self.get_step_location()
+        return x, y, self.img, self.mask
+
+    def draw_piece_with_vector_field(self):
+        x, y, _ = self.get_step_location()
+        vector_field = self.initial_pixel_position + np.array([x,y])
+        return x, y, self.img, self.mask, vector_field
+
+
+class TranslatePuzzle(Puzzle):
+    pieces:List[TranslatingPiece]
+
+    def __init__(self, image_size: Tuple[int, int], puzzle_pad: Tuple[int, int]=(0,0)):
+        super().__init__(image_size, puzzle_pad)
+        self.last_pixel_locations = []
+
+    def add_piece(self, piece: TranslatingPiece):
+        super().add_piece(piece)
+        self.last_pixel_locations.append(piece.initial_pixel_position[:, :, :2] + np.array([piece.x, piece.y]))
+
+    def set_current_step(self, current_step):
+        for p in self.pieces:
+            p.set_step(current_step)
+
+    def draw_with_vector_field(self):
+        """
+        Returns the way the puzzle looks, and a segmentation mask
+        :param pad_image: Pad the image so that all the puzzles will fit in
+        """
+
+        canvas = np.zeros((self.real_size[0], self.real_size[1], 3), dtype=np.uint8)
+        total_vector_field = np.zeros((self.real_size[0], self.real_size[1], 3), dtype=np.float32)
+        mask_canvas = np.zeros(self.real_size[:2], dtype=np.uint16)
+        new_pixel_locations = []
+        for p, last_pixel_location in zip(self.pieces, self.last_pixel_locations):
+            x, y, img, mask, vector_field = p.draw_piece_with_vector_field()
+            x, y = x + (self.pad[0] // 2),  y + (self.pad[1] // 2)
+            canvas[x:x + img.shape[0], y:y + img.shape[1]][mask != 0] = img[mask != 0]
+            mask_canvas[x:x + mask.shape[0], y:y + mask.shape[1]][mask != 0] = mask[mask != 0]
+
+            d_vector_field = vector_field - last_pixel_location
+            new_pixel_locations.append(vector_field)
+
+            vector_field_to_update = d_vector_field[mask != 0]
+            total_vector_field[x:x + img.shape[0], y:y + img.shape[1]][mask != 0] = np.concatenate([vector_field_to_update, np.zeros([vector_field_to_update.shape[0], 1])], axis=1)
+            a = 1
+
+        self.last_pixel_locations = new_pixel_locations
+        return canvas, mask_canvas, total_vector_field
+
