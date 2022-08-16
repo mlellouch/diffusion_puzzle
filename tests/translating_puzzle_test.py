@@ -38,6 +38,7 @@ class TranslatingPuzzleTest(unittest.TestCase):
             #vector_field = np.concatenate([vector_field, np.zeros([vector_field.shape[0], vector_field.shape[1], 1])], axis=2)
 
             cv2.imshow('frame', np.linalg.norm(vector_field, axis=2))
+            assert(vector_field.max() < 10) # if not, some piece is moving really fast
 
             if cv2.waitKey(1) & 0xFF == ord('q'):
                 break
