@@ -256,7 +256,7 @@ class TranslatingPiece(Piece):
         return x, y, self.img, self.mask, vector_field
 
 
-class TranslatePuzzle(Puzzle):
+class TranslatingPuzzle(Puzzle):
     pieces:List[TranslatingPiece]
 
     def __init__(self, image_size: Tuple[int, int], puzzle_pad: Tuple[int, int]=(0,0)):
@@ -292,7 +292,6 @@ class TranslatePuzzle(Puzzle):
 
             vector_field_to_update = d_vector_field[mask != 0]
             total_vector_field[x:x + img.shape[0], y:y + img.shape[1]][mask != 0] = np.concatenate([vector_field_to_update, np.zeros([vector_field_to_update.shape[0], 1])], axis=1)
-            a = 1
 
         self.last_pixel_locations = new_pixel_locations
         return canvas, mask_canvas, total_vector_field

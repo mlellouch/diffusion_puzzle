@@ -13,8 +13,9 @@ def image_to_grid_puzzle(image_path:str, grid_size:int, puzzle_size: Tuple[int, 
 
     if puzzle_size is None:
         puzzle_size = image.shape[:2]
-    assert puzzle_size[0] >= image.shape[0] and puzzle_size[1] >= image.shape[1], "Can't create a puzzle that is" \
-                                                                                  "smaller than the original image"
+
+    else:
+        image = cv2.resize(image, puzzle_size)
 
     padding = (puzzle_size[0] - image.shape[0]) // 2, (puzzle_size[1] - image.shape[1]) // 2
     created_puzzle = puzzle.Puzzle(image_size=puzzle_size, pad=puzzle_pad)
