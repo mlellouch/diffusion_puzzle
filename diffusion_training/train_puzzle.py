@@ -104,19 +104,20 @@ def run(args):
     if torch.cuda.is_available():
         model = model.cuda()
 
-    # run = neptune.init(
-    #     project="michael.lellouch/DiffusionPuzzle",
-    #     api_token="eyJhcGlfYWRkcmVzcyI6Imh0dHBzOi8vYXBwLm5lcHR1bmUuYWkiLCJhcGlfdXJsIjoiaHR0cHM6Ly9hcHAubmVwdHVuZS5haSIsImFwaV9rZXkiOiJkZmVjNDRjMy0wNjQwLTRhOWItODZlZi1mNzAyOTBmNmZjMjUifQ==",
-    # )  # your credentials
+    run = neptune.init(
+        project="michael.lellouch/DiffusionPuzzle",
+        api_token="eyJhcGlfYWRkcmVzcyI6Imh0dHBzOi8vYXBwLm5lcHR1bmUuYWkiLCJhcGlfdXJsIjoiaHR0cHM6Ly9hcHAubmVwdHVuZS5haSIsImFwaV9rZXkiOiJkZmVjNDRjMy0wNjQwLTRhOWItODZlZi1mNzAyOTBmNmZjMjUifQ==",
+    )  # your credentials
 
     train_lr = args.lr
     params = {"learning_rate": train_lr, "optimizer": "Adam"}
-    # run["parameters"] = params
+    run["parameters"] = params
 
     puzzle_size = (args.puzzle_size, args.puzzle_size)
     pad_size = (args.pad_size, args.pad_size)
     workers = cpu_count() if args.parrallel_loading else 0
-    dataset = TranslatingPuzzleDataset(puzzle_size=puzzle_size, pad_size=pad_size, grid_size=args.grid_size,
+    train_path = os.path.join(args.dataset_path, 'train')
+    dataset = TranslatingPuzzleDataset(puzzle_size=puzzle_size, pad_size=pad_size, grid_size=args.grid_size, images_dir=args.train_path,
                                        total_steps=args.total_steps, workers=cpu_count())
     dataloader = DataLoader(dataset, batch_size=args.batch_size, shuffle=False)
 
@@ -151,9 +152,9 @@ def run(args):
         if (epoch + 1) % args.save_model_per_epoch == 0:
             save_model(epoch, model, experiment_dir)
 
-        # run["train/loss"].log(running_loss)
+        run["train/loss"].log(running_loss)
 
-    # run.stop()
+    run.stop()
 
 
 if __name__ == '__main__':
