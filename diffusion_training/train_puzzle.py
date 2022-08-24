@@ -117,7 +117,7 @@ def run(args):
     pad_size = (args.pad_size, args.pad_size)
     workers = cpu_count() if args.parrallel_loading else 0
     train_path = os.path.join(args.dataset_path, 'train')
-    dataset = TranslatingPuzzleDataset(puzzle_size=puzzle_size, pad_size=pad_size, grid_size=args.grid_size, images_dir=args.train_path,
+    dataset = TranslatingPuzzleDataset(puzzle_size=puzzle_size, pad_size=pad_size, grid_size=args.grid_size, images_dir=train_path,
                                        total_steps=args.total_steps, workers=cpu_count())
     dataloader = DataLoader(dataset, batch_size=args.batch_size, shuffle=False)
 
@@ -158,5 +158,7 @@ def run(args):
 
 
 if __name__ == '__main__':
+    if torch.cuda.is_available():
+        torch.set_default_tensor_type('torch.cuda.FloatTensor')
     args = parse_args()
     run(args)

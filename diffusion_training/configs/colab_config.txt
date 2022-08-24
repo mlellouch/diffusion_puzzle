@@ -1,3 +1,4 @@
 parrallel_loading = True
 log_dir = ../../gdrive/MyDrive/diffusion_puzzle/logs/
 experiment_name = first_test
+dataset_path = ../datasets/faces
