@@ -127,7 +127,7 @@ def run(args):
     for epoch in tqdm(range(first_epoch, args.epochs)):
         running_loss = 0.0
         model.train()
-        for i, data in tqdm(enumerate(dataloader)):
+        for i, data in tqdm(enumerate(dataloader), total=len(dataset)):
             # get the inputs; data is a list of [inputs, labels]
             img, vector_field, time = data
             img, vector_field, time = img.to(device=device), vector_field.to(device=device), time.type(torch.int32).to(device=device)
