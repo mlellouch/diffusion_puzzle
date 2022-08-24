@@ -8,9 +8,9 @@ import numpy as np
 from torchvision.transforms import Compose, ToTensor, Normalize
 
 
-faces_path = Path(__file__).parent.parent.joinpath(Path('datasets/faces'))
+faces_path = Path(__file__).parent.parent.joinpath(Path('datasets/faces/train'))
 
-
+import time
 class TranslatingPuzzleDataset(Dataset):
     """A dataset that uses translating puzzles"""
 
@@ -30,7 +30,7 @@ class TranslatingPuzzleDataset(Dataset):
 
         self.field_transforms = Compose([
             ToTensor(),
-            Normalize((0,0,0), (0.005, 0.005, 0.005))
+            # Normalize((0,0,0), (0.005, 0.005, 0.005))
         ])
 
         self.worker_states = []

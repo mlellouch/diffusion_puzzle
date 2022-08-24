@@ -1,5 +1,8 @@
 from typing import Tuple, List
 
+import torch.nn
+from torchvision.transforms import Compose, ToTensor, Normalize
+
 import numpy as np
 import cv2
 
@@ -54,7 +57,7 @@ class Piece:
 
 class Puzzle:
     image_size: Tuple[int, int]
-    pieces: list[Piece]
+    pieces: List[Piece]
 
     def __init__(self, image_size: Tuple[int, int], pad: Tuple[int, int]):
         self.pieces = []
@@ -295,4 +298,89 @@ class TranslatingPuzzle(Puzzle):
 
         self.last_pixel_locations = new_pixel_locations
         return canvas, mask_canvas, total_vector_field
+
+
+
+    def run_model_on_puzzle(self, model: torch.nn.Module, initial_step: int):
+        image_transforms = Compose([
+            ToTensor(),
+            Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
+        ])
+
+        field_transforms = Compose([
+            ToTensor(),
+            # Normalize((0,0,0), (0.005, 0.005, 0.005))
+        ])
+
+        self.set_current_step(initial_step)
+
+        def draw_pieces2(pieces):
+            canvas = np.zeros((self.real_size[0], self.real_size[1], 3), dtype=np.uint8)
+            mask_canvas = np.zeros(self.real_size[:2], dtype=np.uint16)
+
+            for p in pieces:
+                x, y, img, mask = p
+                x_in_canvas = x < canvas.shape[0] and (x + img.shape[0]) > 0
+                y_in_canvas = y < canvas.shape[1] and (y + img.shape[1]) > 0
+                if x_in_canvas and y_in_canvas:
+                    img_x_start, img_x_end = 0 if (x >= 0) else -x, img.shape[0] if (x + img.shape[0]) < canvas.shape[0] else canvas.shape[0] - x
+                    img_y_start, img_y_end = 0 if (y >= 0) else -y, img.shape[1] if (y + img.shape[1]) < canvas.shape[1] else canvas.shape[1] - y
+                    canvas_x_start, canvas_x_end = x if x >= 0 else 0, (x + (img_x_end - img_x_start))
+                    canvas_y_start, canvas_y_end = y if y >= 0 else 0, (y + (img_y_end - img_y_start))
+                    canvas[y:y + img.shape[1], x:x + img.shape[0]][mask != 0] = img[img_y_start:img_y_end, img_x_start:img_x_end][mask[img_y_start:img_y_end, img_x_start:img_x_end] != 0]
+                    mask_canvas[y:y + img.shape[1], x:x + mask.shape[0]][mask != 0] = mask[img_y_start:img_y_end, img_x_start:img_x_end, ][mask[img_y_start:img_y_end, img_x_start:img_x_end] != 0]
+
+            return canvas, mask_canvas
+
+        def draw_pieces(pieces):
+            pad_size = pieces[0][2].shape[:2]
+            canvas = np.zeros((self.real_size[0] + pad_size[0]*2, self.real_size[1]+ pad_size[1]*2, 3), dtype=np.uint8)
+            mask_canvas = np.zeros(canvas.shape[:2], dtype=np.uint16)
+
+            for p in pieces:
+                x, y, img, mask = p
+                x += pad_size[0]
+                y += pad_size[1]
+                x_in_canvas = 0 <= x < canvas.shape[0] and (x + img.shape[0] < canvas.shape[0])
+                y_in_canvas = 0 <= y < canvas.shape[1] and (y + img.shape[1] < canvas.shape[1])
+
+                if x_in_canvas and y_in_canvas:
+                    canvas[x:x + img.shape[0], y:y + img.shape[1]][mask != 0] = img[mask != 0]
+                    mask_canvas[x:x + mask.shape[0], y:y + mask.shape[1]][mask != 0] = mask[mask != 0]
+
+            return canvas[pad_size[0]: -pad_size[0], pad_size[1]: -pad_size[1]], mask_canvas[pad_size[0]: -pad_size[0], pad_size[1]: -pad_size[1]]
+
+        def move_pieces_according_to_field(field, mask_canvas, pieces):
+            for mask_number in range(1, len(pieces)+1):
+                vectors_per_piece = field[0, :, mask_canvas == mask_number]
+                if vectors_per_piece.shape[1] == 0:
+                    continue # all is ocluded
+                average_translation = vectors_per_piece.mean(dim=1)
+                avg_x, avg_y, _ = average_translation
+                pieces[mask_number -1][0] -= int(torch.round(avg_x).item())
+                pieces[mask_number - 1][1] -= int(torch.round(avg_y).item())
+
+
+        # get the initial location of all pieces
+        pieces = [list(p.draw_piece()) for p in self.pieces]
+        for idx in range(len(pieces)):
+            x, y, img, mask = pieces[idx]
+            pieces[idx][0] = x + (self.pad[0] // 2)
+            pieces[idx][1] = y + (self.pad[0] // 2)
+
+
+        for step in range(initial_step, 0, -1):
+            img, mask = draw_pieces(pieces)
+
+            img = image_transforms((img / 255.0).astype(np.float32))
+            img = torch.unsqueeze(img, 0)
+            out = model(img, torch.tensor([step])) * 255
+            move_pieces_according_to_field(out, mask, pieces)
+
+        final_image, _ = draw_pieces(pieces)
+        return final_image
+
+
+
+
 

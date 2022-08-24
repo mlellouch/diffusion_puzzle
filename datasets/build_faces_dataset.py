@@ -15,7 +15,7 @@ def run(images=256):
         img = browser.find_element(By.ID, 'avatar')
         src = img.get_attribute('src')
         image_name = os.path.basename(src)
-        with open(f"./faces/{image_name}", 'wb') as f:
+        with open(f"./faces/train/{image_name}", 'wb') as f:
             f.write(requests.get(src).content)
 
     button = browser.find_element(By.ID, 'reload-button')

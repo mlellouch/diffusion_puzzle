@@ -1,0 +1,2 @@
+experiment_name = 'first_test'
+parrallel_loading = False
