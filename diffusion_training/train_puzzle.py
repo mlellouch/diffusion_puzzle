@@ -46,7 +46,7 @@ def parse_args():
     return parser.parse_args()
 
 
-def save_model(epoch:int , model: nn.Module, experiment_dir: str):
+def save_model(epoch:int, model: nn.Module, experiment_dir: str):
     path = os.path.join(experiment_dir, f'{epoch}.pt')
     torch.save(model.state_dict(), path)
 
@@ -128,7 +128,7 @@ def run(args):
     for epoch in tqdm(range(first_epoch, args.epochs)):
         running_loss = 0.0
         model.train()
-        for i, data in tqdm(enumerate(dataloader), total=len(dataset) // 4, leave=True):
+        for i, data in enumerate(dataloader):
             # get the inputs; data is a list of [inputs, labels]
             img, vector_field, time = data
             img, vector_field, time = img.to(device=device), vector_field.to(device=device), time.type(torch.int32).to(device=device)

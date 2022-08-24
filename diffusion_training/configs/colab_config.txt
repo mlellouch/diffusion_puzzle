@@ -1,4 +1,7 @@
 parrallel_loading = True
 log_dir = ../../gdrive/MyDrive/diffusion_puzzle/logs/
 experiment_name = first_test
-dataset_path = ../datasets/faces
+dataset_path = ../../faces
+
+test_per_epoch = 2
+save_model_per_epoch = 5
