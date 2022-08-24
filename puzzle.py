@@ -6,6 +6,8 @@ from torchvision.transforms import Compose, ToTensor, Normalize
 import numpy as np
 import cv2
 
+device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
 
 class Piece:
 
@@ -314,24 +316,6 @@ class TranslatingPuzzle(Puzzle):
 
         self.set_current_step(initial_step)
 
-        def draw_pieces2(pieces):
-            canvas = np.zeros((self.real_size[0], self.real_size[1], 3), dtype=np.uint8)
-            mask_canvas = np.zeros(self.real_size[:2], dtype=np.uint16)
-
-            for p in pieces:
-                x, y, img, mask = p
-                x_in_canvas = x < canvas.shape[0] and (x + img.shape[0]) > 0
-                y_in_canvas = y < canvas.shape[1] and (y + img.shape[1]) > 0
-                if x_in_canvas and y_in_canvas:
-                    img_x_start, img_x_end = 0 if (x >= 0) else -x, img.shape[0] if (x + img.shape[0]) < canvas.shape[0] else canvas.shape[0] - x
-                    img_y_start, img_y_end = 0 if (y >= 0) else -y, img.shape[1] if (y + img.shape[1]) < canvas.shape[1] else canvas.shape[1] - y
-                    canvas_x_start, canvas_x_end = x if x >= 0 else 0, (x + (img_x_end - img_x_start))
-                    canvas_y_start, canvas_y_end = y if y >= 0 else 0, (y + (img_y_end - img_y_start))
-                    canvas[y:y + img.shape[1], x:x + img.shape[0]][mask != 0] = img[img_y_start:img_y_end, img_x_start:img_x_end][mask[img_y_start:img_y_end, img_x_start:img_x_end] != 0]
-                    mask_canvas[y:y + img.shape[1], x:x + mask.shape[0]][mask != 0] = mask[img_y_start:img_y_end, img_x_start:img_x_end, ][mask[img_y_start:img_y_end, img_x_start:img_x_end] != 0]
-
-            return canvas, mask_canvas
-
         def draw_pieces(pieces):
             pad_size = pieces[0][2].shape[:2]
             canvas = np.zeros((self.real_size[0] + pad_size[0]*2, self.real_size[1]+ pad_size[1]*2, 3), dtype=np.uint8)
@@ -374,6 +358,7 @@ class TranslatingPuzzle(Puzzle):
 
             img = image_transforms((img / 255.0).astype(np.float32))
             img = torch.unsqueeze(img, 0)
+            img = img.to(device=device)
             out = model(img, torch.tensor([step])) * 255
             move_pieces_according_to_field(out, mask, pieces)
 
