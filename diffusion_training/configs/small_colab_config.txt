@@ -1,0 +1,9 @@
+parrallel_loading = True
+log_dir = ../../gdrive/MyDrive/diffusion_puzzle/logs/
+experiment_name = small_dataset
+dataset_path = ../../small_faces
+
+
+epochs = 200
+test_per_epoch = 10
+save_model_per_epoch = 50
