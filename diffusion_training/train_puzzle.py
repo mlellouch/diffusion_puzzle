@@ -82,10 +82,10 @@ def test_model(model, puzzles_to_fix: List[TranslatingPuzzle], initial_steps:Lis
         for initial_step in initial_steps:
             puzzle.set_current_step(initial_step)
             img, canvas = puzzle.draw()
-            cv2.imwrite(os.path.join(experiment_dir, f'puzzle_{idx}_at_{initial_step}.jpg'), cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
 
             final_image = puzzle.run_model_on_puzzle(model, initial_step=initial_step)
-            cv2.imwrite(os.path.join(experiment_dir, f'puzzle_{idx}_epoch_{epoch}_initial_step_{initial_step}.jpg'), cv2.cvtColor(final_image, cv2.COLOR_BGR2RGB))
+            output = cv2.cvtColor(np.concatenate([img, final_image], axis=1), cv2.COLOR_BGR2RGB)
+            cv2.imwrite(os.path.join(experiment_dir, f'puzzle_{idx}_epoch_{epoch}_initial_step_{initial_step}.jpg'), output)
 
 
 
