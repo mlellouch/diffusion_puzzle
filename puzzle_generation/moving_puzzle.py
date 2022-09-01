@@ -32,4 +32,14 @@ def create_random_translating_puzzle(original_puzzle:puzzle.Puzzle, total_steps:
 
     return new_puzzle
 
+def create_random_shifting_puzzle(original_puzzle:puzzle.Puzzle, total_steps:int):
+    new_puzzle = puzzle.TranslatingPuzzle(original_puzzle.image_size, puzzle_pad=original_puzzle.pad)
+    target_locations = [(p.x, p.y) for p in original_puzzle.pieces]
+    random.shuffle(target_locations)
+    for piece, target in zip(original_puzzle.pieces, target_locations):
+        new_piece = puzzle.TranslatingPiece(piece, target[0], target[1], total_steps)
+        new_puzzle.add_piece(new_piece)
+
+    return new_puzzle
+
 

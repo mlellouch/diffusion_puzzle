@@ -14,7 +14,7 @@ import time
 class TranslatingPuzzleDataset(Dataset):
     """A dataset that uses translating puzzles"""
 
-    def __init__(self, puzzle_size, pad_size, grid_size, total_steps, images_dir=str(faces_path), workers=1, start_at_random_step=True):
+    def __init__(self, puzzle_size, pad_size, grid_size, total_steps, images_dir=str(faces_path), workers=1, start_at_random_step=True, puzzle_creation_fn=None):
         self.puzzle_size = puzzle_size
         self.pad_size = pad_size
         self.grid_size = grid_size
@@ -22,6 +22,9 @@ class TranslatingPuzzleDataset(Dataset):
         self.images_dir = images_dir
         self.all_images = os.listdir(images_dir)
         self.start_at_random_step = start_at_random_step
+        self.puzzle_creation_fn = puzzle_creation_fn
+        if self.puzzle_creation_fn is None:
+            self.puzzle_creation_fn = moving_puzzle.create_random_moving_puzzle
 
         self.image_transforms = Compose([
             ToTensor(),
@@ -57,7 +60,7 @@ class TranslatingPuzzleDataset(Dataset):
         puzzle = grid_puzzle.image_to_grid_puzzle(image_path=os.path.join(self.images_dir, image), grid_size=self.grid_size,
                                                   puzzle_size=self.puzzle_size, puzzle_pad=self.pad_size)
 
-        new_puzzle = moving_puzzle.create_random_translating_puzzle(puzzle, total_steps=self.total_steps)
+        new_puzzle = self.puzzle_creation_fn(puzzle, total_steps=self.total_steps)
         return new_puzzle
 
 

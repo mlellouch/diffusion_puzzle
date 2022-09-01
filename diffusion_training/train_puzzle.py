@@ -37,13 +37,16 @@ def parse_args():
     parser.add_argument('--lr', default=1e-4, type=float)
     parser.add_argument('--parrallel_loading', action='store_true', default=True)
 
+    parser.add_argument('--shifting_puzzle', action='store_true')
     parser.add_argument('--puzzle_size', type=int, default=228)
     parser.add_argument('--pad_size', type=int, default=28)
     parser.add_argument('--grid_size', type=int, default=8)
     parser.add_argument('--total_steps', type=int, default=64)
 
 
-    return parser.parse_args()
+    args = parser.parse_args()
+    args.puzzle_creation_fn = moving_puzzle.create_random_translating_puzzle if not args.shifting_puzzle else moving_puzzle.create_random_shifting_puzzle
+    return args
 
 
 def save_model(epoch:int, model: nn.Module, experiment_dir: str):
@@ -73,7 +76,7 @@ def build_test_puzzles(args):
         puzzle = grid_puzzle.image_to_grid_puzzle(image_path=os.path.join(images, image), grid_size=args.grid_size,
                                                   puzzle_size=puzzle_size, puzzle_pad=pad_size)
 
-        new_puzzle = moving_puzzle.create_random_translating_puzzle(puzzle, total_steps=args.total_steps)
+        new_puzzle = args.puzzle_creation_fn(puzzle, total_steps=args.total_steps)
         puzzles.append(new_puzzle)
     return puzzles
 
@@ -118,7 +121,7 @@ def run(args):
     workers = cpu_count() if args.parrallel_loading else 0
     train_path = os.path.join(args.dataset_path, 'train')
     dataset = TranslatingPuzzleDataset(puzzle_size=puzzle_size, pad_size=pad_size, grid_size=args.grid_size, images_dir=train_path,
-                                       total_steps=args.total_steps, workers=cpu_count())
+                                       total_steps=args.total_steps, workers=cpu_count(), puzzle_creation_fn=args.puzzle_creation_fn)
     dataloader = DataLoader(dataset, batch_size=args.batch_size, shuffle=False)
 
     optimizer = Adam(model.parameters(), lr=train_lr, betas=(0.9, 0.99))
