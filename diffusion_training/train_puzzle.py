@@ -43,6 +43,8 @@ def parse_args():
     parser.add_argument('--grid_size', type=int, default=8)
     parser.add_argument('--total_steps', type=int, default=64)
 
+    parser.add_argument('--just_solve', action='store_true')
+    parser.add_argument('--resolve_step', type=int, default=0)
 
     args = parser.parse_args()
     args.puzzle_creation_fn = moving_puzzle.create_random_translating_puzzle if not args.shifting_puzzle else moving_puzzle.create_random_shifting_puzzle
@@ -80,13 +82,13 @@ def build_test_puzzles(args):
         puzzles.append(new_puzzle)
     return puzzles
 
-def test_model(model, puzzles_to_fix: List[TranslatingPuzzle], initial_steps:List[int], experiment_dir, epoch):
+def test_model(model, puzzles_to_fix: List[TranslatingPuzzle], initial_steps:List[int], experiment_dir, epoch, resolve_step=0):
     for idx, puzzle in enumerate(puzzles_to_fix):
         for initial_step in initial_steps:
             puzzle.set_current_step(initial_step)
             img, canvas = puzzle.draw()
 
-            final_image = puzzle.run_model_on_puzzle(model, initial_step=initial_step)
+            final_image = puzzle.run_model_on_puzzle(model, initial_step=initial_step, resolve_step=resolve_step)
             output = cv2.cvtColor(np.concatenate([img, final_image], axis=1), cv2.COLOR_BGR2RGB)
             cv2.imwrite(os.path.join(experiment_dir, f'puzzle_{idx}_initial_step_{initial_step}_epoch_{epoch}.jpg'), output)
 
@@ -103,6 +105,11 @@ def run(args):
 
     model, first_epoch = load_model(experiment_dir, model)
     test_puzzles = build_test_puzzles(args)
+
+    if args.just_solve:
+        model.eval()
+        test_model(model=model, puzzles_to_fix=test_puzzles, initial_steps=args.test_initial_steps,
+                   experiment_dir=experiment_dir, epoch=first_epoch, resolve_step=args.resolve_step)
 
     if torch.cuda.is_available():
         model = model.cuda()

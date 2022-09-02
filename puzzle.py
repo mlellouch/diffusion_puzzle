@@ -303,7 +303,7 @@ class TranslatingPuzzle(Puzzle):
 
 
 
-    def run_model_on_puzzle(self, model: torch.nn.Module, initial_step: int):
+    def run_model_on_puzzle(self, model: torch.nn.Module, initial_step: int, resolve_step:int = 0):
         image_transforms = Compose([
             ToTensor(),
             Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
@@ -352,15 +352,20 @@ class TranslatingPuzzle(Puzzle):
             pieces[idx][0] = x + (self.pad[0] // 2)
             pieces[idx][1] = y + (self.pad[0] // 2)
 
-
-        for step in range(initial_step, 0, -1):
+        def single_step(step_index:int ):
             img, mask = draw_pieces(pieces)
-
             img = image_transforms((img / 255.0).astype(np.float32))
             img = torch.unsqueeze(img, 0)
             img = img.to(device=device)
             out = model(img, torch.tensor([step])) * 255
             move_pieces_according_to_field(out, mask, pieces)
+
+        for step in range(initial_step, 0, -1):
+            single_step(step)
+
+        if resolve_step != 0:
+            for step in range(resolve_step, 0, -1):
+                single_step(step)
 
         final_image, _ = draw_pieces(pieces)
         return final_image
