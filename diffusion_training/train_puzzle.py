@@ -90,7 +90,11 @@ def test_model(model, puzzles_to_fix: List[TranslatingPuzzle], initial_steps:Lis
 
             final_image = puzzle.run_model_on_puzzle(model, initial_step=initial_step, resolve_step=resolve_step)
             output = cv2.cvtColor(np.concatenate([img, final_image], axis=1), cv2.COLOR_BGR2RGB)
-            cv2.imwrite(os.path.join(experiment_dir, f'puzzle_{idx}_initial_step_{initial_step}_epoch_{epoch}.jpg'), output)
+
+            image_name = f'puzzle_{idx}_initial_step_{initial_step}_epoch_{epoch}.jpg'
+            if resolve_step != 0:
+                image_name = f'resolve_{resolve_step}_' + image_name
+            cv2.imwrite(os.path.join(experiment_dir, image_name), output)
 
 
 
