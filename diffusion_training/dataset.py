@@ -14,7 +14,7 @@ import time
 class TranslatingPuzzleDataset(Dataset):
     """A dataset that uses translating puzzles"""
 
-    def __init__(self, puzzle_size, pad_size, grid_size, total_steps, images_dir=str(faces_path), workers=1, start_at_random_step=True, puzzle_creation_fn=None):
+    def __init__(self, puzzle_size, pad_size, grid_size, total_steps, images_dir=str(faces_path), workers=1, start_at_random_step=True, puzzle_creation_fn=None, add_noise=False):
         self.puzzle_size = puzzle_size
         self.pad_size = pad_size
         self.grid_size = grid_size
@@ -23,6 +23,7 @@ class TranslatingPuzzleDataset(Dataset):
         self.all_images = os.listdir(images_dir)
         self.start_at_random_step = start_at_random_step
         self.puzzle_creation_fn = puzzle_creation_fn
+        self.add_noise = add_noise
         if self.puzzle_creation_fn is None:
             self.puzzle_creation_fn = moving_puzzle.create_random_moving_puzzle
 
@@ -50,15 +51,13 @@ class TranslatingPuzzleDataset(Dataset):
                 'current_puzzle': new_puzzle
             })
 
-
-
     def __len__(self):
         return len(self.all_images) * self.total_steps
 
     def _load_new_puzzle(self):
         image = random.choice(self.all_images)
         puzzle = grid_puzzle.image_to_grid_puzzle(image_path=os.path.join(self.images_dir, image), grid_size=self.grid_size,
-                                                  puzzle_size=self.puzzle_size, puzzle_pad=self.pad_size)
+                                                  puzzle_size=self.puzzle_size, puzzle_pad=self.pad_size, add_noise=self.add_noise)
 
         new_puzzle = self.puzzle_creation_fn(puzzle, total_steps=self.total_steps)
         return new_puzzle

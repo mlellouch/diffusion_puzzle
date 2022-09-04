@@ -3,9 +3,10 @@ import numpy as np
 from typing import Tuple
 import puzzle
 import cv2
+from skimage.util import random_noise
 
 
-def image_to_grid_puzzle(image_path:str, grid_size:int, puzzle_size: Tuple[int, int]=None, puzzle_pad: Tuple[int, int]=(0,0)):
+def image_to_grid_puzzle(image_path:str, grid_size:int, puzzle_size: Tuple[int, int]=None, puzzle_pad: Tuple[int, int]=(0,0), add_noise=False):
     image = np.array(Image.open(image_path))
     # add alpha channel if needed
     if image.shape[2] == 3:
@@ -16,6 +17,9 @@ def image_to_grid_puzzle(image_path:str, grid_size:int, puzzle_size: Tuple[int, 
 
     else:
         image = cv2.resize(image, puzzle_size)
+
+    if add_noise:
+        image = random_noise(image, mode='s&p',amount=0.2)
 
     padding = (puzzle_size[0] - image.shape[0]) // 2, (puzzle_size[1] - image.shape[1]) // 2
     created_puzzle = puzzle.Puzzle(image_size=puzzle_size, pad=puzzle_pad)

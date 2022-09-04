@@ -42,6 +42,7 @@ def parse_args():
     parser.add_argument('--pad_size', type=int, default=28)
     parser.add_argument('--grid_size', type=int, default=8)
     parser.add_argument('--total_steps', type=int, default=64)
+    parser.add_argument('--add_noise', action='store_true')
 
     parser.add_argument('--just_solve', action='store_true')
     parser.add_argument('--resolve_step', type=int, default=0)
@@ -76,7 +77,7 @@ def build_test_puzzles(args):
     pad_size = (args.pad_size, args.pad_size)
     for image in os.listdir(images):
         puzzle = grid_puzzle.image_to_grid_puzzle(image_path=os.path.join(images, image), grid_size=args.grid_size,
-                                                  puzzle_size=puzzle_size, puzzle_pad=pad_size)
+                                                  puzzle_size=puzzle_size, puzzle_pad=pad_size, add_noise=args.add_noise)
 
         new_puzzle = args.puzzle_creation_fn(puzzle, total_steps=args.total_steps)
         puzzles.append(new_puzzle)
@@ -114,6 +115,7 @@ def run(args):
         model.eval()
         test_model(model=model, puzzles_to_fix=test_puzzles, initial_steps=args.test_initial_steps,
                    experiment_dir=experiment_dir, epoch=first_epoch, resolve_step=args.resolve_step)
+        exit(0)
 
     if torch.cuda.is_available():
         model = model.cuda()
