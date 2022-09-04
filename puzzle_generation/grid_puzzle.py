@@ -3,7 +3,6 @@ import numpy as np
 from typing import Tuple
 import puzzle
 import cv2
-from skimage.util import random_noise
 
 
 def image_to_grid_puzzle(image_path:str, grid_size:int, puzzle_size: Tuple[int, int]=None, puzzle_pad: Tuple[int, int]=(0,0), add_noise=False):
